@@ -135,3 +135,67 @@ class PacmanEnv:
                     choice = option
 
         self.ghost_dir, self.ghost = choice              # θυμάται την κατεύθυνση για τον επόμενο γύρο
+
+    def nearest_pellet_dir(self):
+        start = self.pacman
+        queue = deque()
+        seen = {start}
+
+        # Πρώτο κύμα: τα 4 κουτάκια δίπλα του (απόσταση 1)
+        for a in range(4):
+            dr, dc = ACTIONS[a]
+            nxt = (start[0] + dr, start[1] + dc)
+            if nxt not in self.walls:
+                seen.add(nxt)
+                queue.append((nxt, a, 1))
+
+        while queue:
+            pos, first, dist = queue.popleft()
+            if pos in self.pellets:
+                return first, dist
+            for dr, dc in ACTIONS.values():
+                nxt = (pos[0] + dr, pos[1] + dc)
+                if nxt not in self.walls and nxt not in seen:
+                    seen.add(nxt)
+                    queue.append((nxt, first, dist + 1))
+
+        return None, None   # δεν έμεινε καμία κουκίδα
+
+    def get_state(self):
+        r, c = self.pacman
+        state = []
+
+        # 1) Τοίχοι γύρω του (4 κουτάκια)
+        for a in range(4):
+            dr, dc = ACTIONS[a]
+            state.append(1 if (r + dr, c + dc) in self.walls else 0)
+
+        # 2) Προς τα πού είναι το φάντασμα (4 κουτάκια)
+        gr, gc = self.ghost
+        state.append(1 if gr < r else 0)   # πάνω μου
+        state.append(1 if gr > r else 0)   # κάτω μου
+        state.append(1 if gc < c else 0)   # αριστερά μου
+        state.append(1 if gc > c else 0)   # δεξιά μου
+
+        # 3) Πόσο κοντά είναι το φάντασμα (1 κουτάκι)
+        dist = abs(gr - r) + abs(gc - c)
+        state.append(1 - min(dist, 10) / 10)
+
+        # 4) Έρχεται το φάντασμα προς το μέρος μου; (1 κουτάκι)
+        dr, dc = self.ghost_dir
+        next_ghost = (gr + dr, gc + dc)
+        next_dist = abs(next_ghost[0] - r) + abs(next_ghost[1] - c)
+        state.append(1 if next_dist < dist else 0)
+
+        # 5) Προς τα πού είναι η πιο κοντινή κουκίδα (4 κουτάκια)
+        first, pdist = self.nearest_pellet_dir()
+        for a in range(4):
+            state.append(1 if a == first else 0)
+
+        # 6) Πόσο κοντά είναι η πιο κοντινή κουκίδα (1 κουτάκι)
+        if pdist is None:
+            state.append(0)
+        else:
+            state.append(1 - min(pdist, 10) / 10)
+
+        return state
