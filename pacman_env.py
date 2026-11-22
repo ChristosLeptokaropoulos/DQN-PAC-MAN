@@ -1,4 +1,5 @@
 # pacman_env.py — Το παιχνίδι: χάρτης, κινήσεις, φάντασμα, rewards
+from collections import deque
 import random
 # ---------- Ο χάρτης ----------
 LAYOUT = [
