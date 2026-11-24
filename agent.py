@@ -3,7 +3,40 @@
 import random
 import torch
 from dqn import DQN
+from collections import deque
 
+class ReplayBuffer:
+    # Η αποθήκη: κρατάει τις τελευταίες κινήσεις του agent.
+    # Κάθε κίνηση = (state, action, reward, next_state, done)
+
+    def __init__(self, capacity=50000):
+        # Λίστα με όριο: όταν γεμίσει, η πιο παλιά κίνηση φεύγει αυτόματα
+        self.buffer = deque(maxlen=capacity)
+
+    def push(self, state, action, reward, next_state, done):
+        # Βάζει μία νέα κίνηση στο τέλος της αποθήκης
+        self.buffer.append((state, action, reward, next_state, done))
+
+    def sample(self, batch_size=32):
+        # Τραβάει batch_size τυχαίες, διαφορετικές κινήσεις
+        batch = random.sample(self.buffer, batch_size)
+
+        # Από 32 πεντάδες → 5 ομάδες των 32 (όλα τα states μαζί, όλα τα actions μαζί, ...)
+        states, actions, rewards, next_states, dones = zip(*batch)
+
+        # Μετατροπή σε tensors για να τα καταλαβαίνει το PyTorch
+        return (
+            torch.tensor(states, dtype=torch.float32),
+            torch.tensor(actions, dtype=torch.int64),
+            torch.tensor(rewards, dtype=torch.float32),
+            torch.tensor(next_states, dtype=torch.float32),
+            torch.tensor(dones, dtype=torch.float32),
+        )
+
+    def __len__(self):
+        # Πόσες κινήσεις έχει η αποθήκη. Μας χρειάζεται για να ξέρουμε
+        # αν έχουμε μαζέψει αρκετές για ένα batch (η απάντηση β που έδωσες)
+        return len(self.buffer)
 
 class Agent:
     def __init__(self, n_inputs=15, n_actions=4,
